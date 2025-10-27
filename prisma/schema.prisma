@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -8,52 +7,72 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  createdAt DateTime @default(now())
-  players   Player[]
-}
-
-model Game {
-  id          Int          @id @default(autoincrement())
-  status      String // e.g. 'waiting', 'active', 'finished'
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  players     Player[]
-  moves       Move[]
-  boardStates BoardState[]
-}
-
-model Player {
-  id        Int      @id @default(autoincrement())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    Int
-  game      Game     @relation(fields: [gameId], references: [id])
-  gameId    Int
-  color     String // e.g. 'red', 'blue', 'yellow', 'purple'
-  turnOrder Int
-  joinedAt  DateTime @default(now())
-  moves     Move[]
-}
-
-model Move {
-  id        Int      @id @default(autoincrement())
-  game      Game     @relation(fields: [gameId], references: [id])
-  gameId    Int
-  player    Player   @relation(fields: [playerId], references: [id])
-  playerId  Int
-  moveType  String // e.g. 'place', 'block', 'wind', etc.
-  moveData  Json // details of the move
-  createdAt DateTime @default(now())
-}
-
-model BoardState {
+model boardstate {
   id         Int      @id @default(autoincrement())
-  game       Game     @relation(fields: [gameId], references: [id])
   gameId     Int
-  stateData  Json // board layout, fire, wind, etc.
+  stateData  Json
   turnNumber Int
   createdAt  DateTime @default(now())
+  game       game     @relation(fields: [gameId], references: [id], map: "BoardState_gameId_fkey")
+
+  @@index([gameId], map: "BoardState_gameId_fkey")
+}
+
+model game {
+  id         Int          @id @default(autoincrement())
+  status     String // 'waiting', 'active', 'finished'
+  maxPlayers Int          @default(4) // Configurable player limit
+  createdBy  Int? // Optional: track who created the game
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  boardstate boardstate[]
+  move       move[]
+  player     player[]
+}
+
+model move {
+  id        Int      @id @default(autoincrement())
+  gameId    Int
+  playerId  Int
+  moveType  String
+  moveData  Json
+  createdAt DateTime @default(now())
+  game      game     @relation(fields: [gameId], references: [id], map: "Move_gameId_fkey")
+  player    player   @relation(fields: [playerId], references: [id], map: "Move_playerId_fkey")
+
+  @@index([gameId], map: "Move_gameId_fkey")
+  @@index([playerId], map: "Move_playerId_fkey")
+}
+
+enum TowerPosition {
+  NORTH_WEST = '
+  NORTH_EAST
+  SOUTH_WEST
+  SOUTH_EAST
+}
+
+model player {
+  id        Int           @id @default(autoincrement())
+  userId    Int
+  gameId    Int
+  tower     TowerPosition
+  turnOrder Int
+  joinedAt  DateTime      @default(now())
+  move      move[]
+  game      game          @relation(fields: [gameId], references: [id], map: "Player_gameId_fkey")
+  user      user          @relation(fields: [userId], references: [id], map: "Player_userId_fkey")
+
+  @@index([gameId], map: "Player_gameId_fkey")
+  @@index([userId], map: "Player_userId_fkey")
+}
+
+model user {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String?  @unique(map: "User_email_key") // Optional for guest users
+  isGuest   Boolean  @default(true) // Track if user is a guest
+  sessionId String?  @unique // For session tracking
+  lastSeen  DateTime @default(now()) // Track activity
+  createdAt DateTime @default(now())
+  player    player[]
 }

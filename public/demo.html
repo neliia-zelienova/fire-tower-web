@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fire Tower Game - Guest Play Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 p-8">
+    <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
+      <h1 class="text-3xl font-bold text-center mb-8">Fire Tower Board Game</h1>
+
+      <!-- User Creation Section -->
+      <div class="mb-8 p-4 border rounded-lg">
+        <h2 class="text-xl font-semibold mb-4">Join as Guest Player</h2>
+        <div class="flex gap-4">
+          <input
+            type="text"
+            id="playerName"
+            placeholder="Enter your name"
+            class="flex-1 border rounded px-3 py-2"
+          />
+          <button
+            onclick="createGuestUser()"
+            class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600"
+          >
+            Join Game
+          </button>
+        </div>
+        <div id="userInfo" class="mt-4 hidden">
+          <div class="bg-green-100 p-3 rounded">
+            <p><strong>Welcome!</strong> <span id="userName"></span></p>
+            <p>
+              <small>Session ID: <span id="sessionId"></span></small>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Game Creation Section -->
+      <div class="mb-8 p-4 border rounded-lg">
+        <h2 class="text-xl font-semibold mb-4">Create New Game</h2>
+        <button
+          onclick="createGame()"
+          class="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600"
+        >
+          Create Game Room
+        </button>
+        <div id="gameInfo" class="mt-4 hidden">
+          <div class="bg-blue-100 p-3 rounded">
+            <p><strong>Game Created!</strong></p>
+            <p>
+              Room Code: <span id="roomCode" class="font-mono text-lg"></span>
+            </p>
+            <p>Share this code with other players to join!</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Game Joining Section -->
+      <div class="mb-8 p-4 border rounded-lg">
+        <h2 class="text-xl font-semibold mb-4">Join Existing Game</h2>
+        <div class="flex gap-4">
+          <input
+            type="text"
+            id="joinRoomCode"
+            placeholder="Enter room code"
+            class="flex-1 border rounded px-3 py-2"
+          />
+          <button
+            onclick="joinGame()"
+            class="bg-purple-500 text-white px-6 py-2 rounded hover:bg-purple-600"
+          >
+            Join Game
+          </button>
+        </div>
+        <div id="joinInfo" class="mt-4 hidden">
+          <div class="bg-yellow-100 p-3 rounded">
+            <p><strong>Joined Game!</strong></p>
+            <p>Color: <span id="playerColor"></span></p>
+            <p>Turn Order: <span id="turnOrder"></span></p>
+          </div>
+        </div>
+      </div>
+
+      <div
+        id="errorDiv"
+        class="hidden mt-4 p-3 bg-red-100 border border-red-300 rounded"
+      ></div>
+    </div>
+
+    <script>
+      let currentUser = null;
+      let currentGame = null;
+
+      async function createGuestUser() {
+        const name = document.getElementById('playerName').value;
+        if (!name) {
+          showError('Please enter your name');
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/auth/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name }),
+          });
+
+          const data = await response.json();
+          if (response.ok) {
+            currentUser = data;
+            document.getElementById('userName').textContent = data.name;
+            document.getElementById('sessionId').textContent =
+              data.sessionId.substring(0, 8) + '...';
+            document.getElementById('userInfo').classList.remove('hidden');
+
+            // Store session in localStorage for persistence
+            localStorage.setItem('firetower_session', data.sessionId);
+          } else {
+            showError(data.error);
+          }
+        } catch (error) {
+          showError('Network error: ' + error.message);
+        }
+      }
+
+      async function createGame() {
+        if (!currentUser) {
+          showError('Please join as a player first');
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/game/room', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ createdBy: currentUser.id }),
+          });
+
+          const data = await response.json();
+          if (response.ok) {
+            currentGame = data;
+            document.getElementById('roomCode').textContent = data.roomCode;
+            document.getElementById('gameInfo').classList.remove('hidden');
+          } else {
+            showError(data.error);
+          }
+        } catch (error) {
+          showError('Network error: ' + error.message);
+        }
+      }
+
+      async function joinGame() {
+        if (!currentUser) {
+          showError('Please join as a player first');
+          return;
+        }
+
+        const roomCode = document.getElementById('joinRoomCode').value;
+        if (!roomCode) {
+          showError('Please enter a room code');
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/game/join', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              roomCode: roomCode.toUpperCase(),
+              userId: currentUser.id,
+            }),
+          });
+
+          const data = await response.json();
+          if (response.ok) {
+            document.getElementById('playerColor').textContent = data.color;
+            document.getElementById('turnOrder').textContent = data.turnOrder;
+            document.getElementById('joinInfo').classList.remove('hidden');
+          } else {
+            showError(data.error);
+          }
+        } catch (error) {
+          showError('Network error: ' + error.message);
+        }
+      }
+
+      function showError(message) {
+        const errorDiv = document.getElementById('errorDiv');
+        errorDiv.textContent = message;
+        errorDiv.classList.remove('hidden');
+        setTimeout(() => errorDiv.classList.add('hidden'), 5000);
+      }
+
+      // Check for existing session on page load
+      window.onload = function () {
+        const sessionId = localStorage.getItem('firestore_session');
+        if (sessionId) {
+          // Could restore session here
+          console.log('Found existing session:', sessionId);
+        }
+      };
+    </script>
+  </body>
+</html>

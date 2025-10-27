@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import { nanoid } from 'nanoid';
+import { PrismaClient, TowerPosition } from '@prisma/client';
+import { chooseRandomTower } from '@/app/api-utils/game/utils';
+import { socketService } from '@/lib/socket/socketService';
 
 const prisma = new PrismaClient();
 
@@ -9,19 +10,32 @@ export async function POST(request: Request) {
   if (!userId) {
     return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
   }
-  // Generate unique room ID
-  const roomId = nanoid(10);
   // Create game session
   const game = await prisma.game.create({
     data: {
       status: 'waiting',
-      boardStates: [],
-      moves: [],
-      players: {
-        create: [{ userId, color: 'red', turnOrder: 1 }],
+      createdBy: userId,
+      player: {
+        create: [
+          {
+            userId,
+            tower: chooseRandomTower([]) as TowerPosition,
+            turnOrder: 1,
+          },
+        ],
       },
-      // You can store roomId in a custom field or use id as roomId
+    },
+    include: {
+      player: true,
     },
   });
-  return NextResponse.json({ gameId: game.id, roomId });
+
+  // Emit socket event for game creation
+  socketService.gameStateUpdated(game.id, {
+    status: game.status,
+    players: game.player,
+    currentTurn: 1,
+  });
+
+  return NextResponse.json({ gameId: game.id });
 }
