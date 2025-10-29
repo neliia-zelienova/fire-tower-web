@@ -4,7 +4,7 @@ import type {
   ServerToClientEvents,
   InterServerEvents,
   SocketData,
-} from '../types/socket';
+} from '../../types/socket';
 
 type GameSocket = Server<
   ClientToServerEvents,
