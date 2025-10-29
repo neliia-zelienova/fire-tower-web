@@ -1,0 +1,6 @@
+export enum TowerPosition {
+  NORTH_WEST = 'NORTH_WEST',
+  NORTH_EAST = 'NORTH_EAST',
+  SOUTH_WEST = 'SOUTH_WEST',
+  SOUTH_EAST = 'SOUTH_EAST',
+}
