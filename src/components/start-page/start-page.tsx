@@ -1,6 +1,15 @@
+'use client';
+
+import React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { User } from '@/types/user';
-import { Dialog, DialogTrigger, DialogContent } from '../ui/dialog';
+import {
+  Dialog,
+  DialogClose,
+  DialogContentWrapper,
+  DialogTitle,
+} from '../ui/dialog';
+import { useToast } from '@/components/ui/use-toast';
 
 export const StartPage = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -8,45 +17,61 @@ export const StartPage = () => {
   const [name, setName] = useState('');
   const [gameId, setGameId] = useState<string | null>(null);
   const [gameDialogOpen, setGameDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const { toast } = useToast();
 
   const handleSignIn = async (name: string, email?: string) => {
-    fetch('/api/auth/signup', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ name, email }),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        setUser(data);
-        localStorage.setItem('user', JSON.stringify(data));
-        return data;
-      });
+    try {
+      setLoading(true);
+      const data = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name, email }),
+      }).then((response) => response.json());
+
+      setUser(data);
+      localStorage.setItem('user', JSON.stringify(data));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCreateGame = useCallback(async () => {
     if (!user) return;
+    try {
+      setLoading(true);
 
-    const newGameId = await fetch('/api/game/create', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ userId: user.id }),
-    })
-      .then((response) => response.json())
-      .then((data) => data.gameId);
+      const newGameId = await fetch('/api/game/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: user.id }),
+      })
+        .then((response) => response.json())
+        .then((data) => data.gameId);
 
-    setGameId(newGameId);
-    setGameDialogOpen(true);
+      console.log('Created game with ID:', newGameId);
+      setGameId(newGameId);
+      setGameDialogOpen(Boolean(newGameId));
+    } finally {
+      setLoading(false);
+    }
     // TODO: assign socket
   }, [user]);
 
-  const handleCopyLink = () => {
-    if (gameId) {
+  const handleCopyLink = async () => {
+    if (!gameId) return;
+    try {
       const link = `${window.location.origin}/game/join/${gameId}`;
-      navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(link);
+      toast({ description: 'Game link copied!' });
+    } catch (err) {
+      console.error('Failed to copy game link', err);
+      toast({ description: 'Failed to copy link', duration: 3000 });
     }
   };
 
@@ -68,24 +93,40 @@ export const StartPage = () => {
         <button className="border rounded-md p-2" onClick={() => setUser(null)}>
           Sign Out
         </button>
-        <button className="border rounded-md p-2" onClick={handleCreateGame}>
-          Create a new game
+        <button
+          onClick={handleCreateGame}
+          className={`border rounded-md p-2`}
+          disabled={loading}
+        >
+          Create game
         </button>
         <Dialog
-          open={gameId !== null}
-          onOpenChange={() => setGameDialogOpen(false)}
+          open={gameDialogOpen}
+          onOpenChange={(value) => {
+            console.log('onOpenChange value', value);
+            setGameDialogOpen(value);
+          }}
         >
-          <DialogTrigger>Game is ready!</DialogTrigger>
-          <DialogContent>
-            <span>
+          <DialogContentWrapper>
+            <div className="flex flex-row justify-between items-center">
+              <DialogTitle>Game invitation</DialogTitle>
+              <DialogClose />
+            </div>
+            <div className="bg-white/10 mt-3 rounded-md p-2">
               {/* TODO: make a possibility to share link via most popular messengers */}
-              Click{' '}
-              <button className="font-semibold" onClick={handleCopyLink}>
+              <span>Click </span>
+              <button
+                className="font-semibold underline"
+                onClick={handleCopyLink}
+              >
                 here
-              </button>{' '}
-              to copy the game link and invite your friends to start a party
-            </span>
-          </DialogContent>
+              </button>
+              <span>
+                {' '}
+                to copy the game link and invite your friends to start a party
+              </span>
+            </div>
+          </DialogContentWrapper>
         </Dialog>
       </div>
     );
