@@ -1,6 +1,6 @@
 'use client';
 import * as React from 'react';
-import { Toast } from 'radix-ui';
+import * as Toast from '@radix-ui/react-toast';
 
 export const ToastProvider = Toast.Provider;
 export const ToastRoot = Toast.Root;

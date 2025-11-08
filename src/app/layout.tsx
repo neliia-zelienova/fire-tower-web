@@ -1,16 +1,18 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Inter, Cinzel } from 'next/font/google';
 import './globals.css';
 import { AppToastProvider } from '@/components/ui/use-toast';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const cinzel = Cinzel({
+  weight: ['400', '700'],
   subsets: ['latin'],
+  variable: '--font-cinzel',
 });
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const inter = Inter({
+  weight: ['400', '500', '600', '700'],
   subsets: ['latin'],
+  variable: '--font-inter',
 });
 
 export const metadata: Metadata = {
@@ -25,9 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${inter.variable} ${cinzel.variable} antialiased`}>
         <AppToastProvider>{children}</AppToastProvider>
       </body>
     </html>

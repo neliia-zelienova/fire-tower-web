@@ -25,11 +25,11 @@ export const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ children, ...props }, ref) => (
   <DialogPortal>
-    <DialogOverlay className="fixed inset-0 bg-black/50" />
+    <DialogOverlay className="fixed inset-0 z-50 bg-black/50" />
     <DialogPrimitive.Content
       {...props}
       ref={ref}
-      className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white text-black dark:bg-neutral-900 dark:text-white rounded-md p-4 shadow-lg max-w-md w-[90vw] ${
+      className={`fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 bg-white text-black dark:bg-neutral-900 dark:text-white rounded-md p-4 shadow-lg max-w-2xl w-[90vw] ${
         // preserve incoming className if provided
         (props as any)?.className || ''
       }`}
